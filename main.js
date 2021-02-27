@@ -1,5 +1,15 @@
 const express = require("express");
 const app = express();
+const { Client } = require("pg");
+
+const client = new Client({
+    user: 'postgres',
+    host: 'localhost',
+    database: 'danieldesmond',
+    port: 5432
+});
+
+client.connect();
 
 let envelopes = [
     {
@@ -38,29 +48,40 @@ app.delete("/del-env/:id", (req, res, next) => {
     res.status(500).send();
 })
 
-app.post("/crt-env", (req, res, next) => {
-    envelopes.push({
-        id: req.query.id,
-        gas: req.query.gas,
-        rent: req.query.rent,
-        groceries: req.query.groceries,
-        savings: req.query.savings
-    });
-    res.send("Successful");
+app.post("/crt-env", async (req, res, next) => {
+    const id = req.query.id;
+    const gas = req.query.gas;
+    const rent = req.query.rent;
+    const groceries = req.query.groceries;
+    const savings = req.query.savings;
+    const query = `INSERT INTO personal_budget (id, gas, rent, groceries, savings)
+                   VALUES (${id}, ${gas}, ${rent}, ${groceries}, ${savings})`;
+    try {
+        const dbRes = await client.query(query);
+        console.log('Client added');
+        res.send("Successful");
+    } catch (err) {
+        console.log(err.stack);
+        res.status(500).send("ERROR")
+    }
 });
 
-app.put("/adj-env/:id", (req, res, next) => {
-    for (let env of envelopes) {
-        if (env.id == req.params.id) {
-            env.gas = req.query.gas;
-            env.rent = req.query.rent;
-            env.groceries = req.query.groceries;
-            env.savings = req.query.savings;
-            res.send("Success ");
-            return;
-        }
+app.put("/adj-env/:id", async (req, res, next) => {
+    const id = req.params.id;
+    const gas = req.query.gas;
+    const rent = req.query.rent;
+    const groceries = req.query.groceries;
+    const savings = req.query.savings
+    const query = `UPDATE personal_budget SET gas = ${gas}, rent = ${rent}, groceries = ${groceries}, savings = ${savings} WHERE id = ${id}`
+
+    try {
+        const dbRes = await client.query(query);
+        console.log('user adjusted');
+        res.send("Successful");
+    } catch (err) {
+        console.log(err.stack);
+        res.status(500).send("ERROR")
     }
-    res.status(500).send("ERROR");
 })
 
 app.get("/env/:id", (req, res, next) => {
